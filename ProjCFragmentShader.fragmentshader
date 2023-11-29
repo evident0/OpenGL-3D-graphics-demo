@@ -1,0 +1,56 @@
+#version 330 core
+
+// Interpolated values from the vertex shaders
+in vec2 UV;
+
+// Ouput data
+out vec4 FragColor;
+
+// Values that stay constant for the whole mesh.
+uniform sampler2D myTextureSampler;
+
+struct PointLight {    
+    vec3 position;
+};
+
+#define NR_POINT_LIGHTS 10
+uniform PointLight pointLights[NR_POINT_LIGHTS];
+uniform int arraySize;
+uniform vec4 lightColor;
+uniform vec3 camPos;
+in vec3 crntPos;
+
+void main(){
+	
+	float sum = 0.0f;
+	float indirectlighting = 0.8f;
+	float specularLight = 5.0f;
+	
+	for(int i = 0; i < arraySize; i++){
+
+		if(i >= NR_POINT_LIGHTS){
+			
+			break;
+
+		}
+
+		float difference = abs(pointLights[i].position.z - crntPos.z);
+
+		float attenuation = 1.0f /(0.1f + 0.6f * difference + 0.8f * difference * difference);
+
+		vec3 normal = normalize(vec3(UV.x,UV.y,10.0f));
+
+		vec3 lightDirection = normalize(pointLights[i].position - crntPos);
+
+		float diffuse = max(dot(normal, lightDirection), 0.0f);
+
+		vec3 viewDirection = normalize(camPos - crntPos);
+		vec3 reflectionDirection = reflect(-lightDirection, normal);
+		float specAmount = pow(max(dot(viewDirection, reflectionDirection), 0.0f), 10);
+		float specular = specAmount * specularLight;
+		sum += (diffuse+specular)*attenuation;
+	}
+
+	// Output color = color of the texture at the specified UV
+	FragColor = texture( myTextureSampler, UV ) * ((sum*lightColor) + indirectlighting);
+}
